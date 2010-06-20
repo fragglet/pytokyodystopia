@@ -26,6 +26,15 @@ cdef extern from "dystopia.h":
 	char *tcidbget(TCIDB *idb, int id)
 	unsigned int *tcidbsearch(TCIDB *idb, char *word, int smode, int *np)
 	unsigned int *tcidbsearch2(TCIDB *idb, char *expr, int *np)
+	bint tcidbiterinit(TCIDB *idb)
+	unsigned int tcidbiternext(TCIDB *idb)
+	bint tcidbsync(TCIDB *idb)
+	bint tcidboptimize(TCIDB *idb)
+	bint tcidbvanish(TCIDB *idb)
+	bint tcidbcopy(TCIDB *idb, char *path)
+	char *tcidbpath(TCIDB *idb)
+	unsigned int tcidbrnum(TCIDB *idb)
+	unsigned int tcidbfsiz(TCIDB *idb)
 
 # Open flags
 
@@ -35,7 +44,7 @@ CREAT = IDBOCREAT
 TRUNC = IDBOTRUNC
 NOLCK = IDBONOLCK
 LCKNB = IDBOLCKNB
-
+	
 cdef class database:
 	cdef TCIDB *db
 
@@ -49,6 +58,30 @@ cdef class database:
 
 	def __del__(self):
 		tcidbdel(self.db)
+	
+	def __len__(self):
+		return tcidbrnum(self.db)
+	
+	def __iter__(self):
+		if not tcidbiterinit(self.db):
+			self.__throw_exception()
+
+		# The API only allows for one iterator at a time;
+		# the iterator reference is to the DB object.
+		# This is rather un-Python-like.
+
+		return self
+
+	# This method is here because the database object acts as its
+	# own iterator.
+
+	def __next__(self):
+		val = tcidbiternext(self.db)
+
+		if val == 0:
+			raise StopIteration()
+
+		return val
 
 	def open(self, filename, mode):
 		if not tcidbopen(self.db, filename, mode):
@@ -57,6 +90,18 @@ cdef class database:
 	def close(self):
 		if not tcidbclose(self.db):
 			self.__throw_exception()
+
+	def path(self):
+		cdef char *result
+		result = tcidbpath(self.db)
+
+		if result == NULL:
+			return None
+		else:
+			return result
+
+	def fsiz(self):
+		return tcidbfsiz(self.db)
 
 	def put(self, id, text):
 		if not tcidbput(self.db, id, text):
@@ -75,6 +120,10 @@ cdef class database:
 		else:
 			return text
 
+	def vanish(self):
+		if not tcidbvanish(self.db):
+			self.__throw_exception()
+
 	def tune(self, ernum, etnum, iusiz, opts):
 		if not tcidbtune(self.db, ernum, etnum, iusiz, opts):
 			self.__throw_exception()
@@ -87,4 +136,11 @@ cdef class database:
 		if not tcidbsetfwmmax(self.db, fwmmax):
 			self.__throw_exception()
 
+	def sync(self):
+		if not tcidbsync(self.db):
+			self.__throw_exception()
+
+	def optimize(self):
+		if not tcidboptimize(self.db):
+			self.__throw_exception()
 
