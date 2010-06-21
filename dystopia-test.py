@@ -13,6 +13,10 @@ print "All objects:"
 for id in db:
 	print "%i: %s" % (id, db.get(id))
 
+search_results = db.search("world", dystopia.SUBSTR)
+
+print "Searched for 'world', result: %s" % search_results
+
 db.out(1234)
 
 print db.get(1234), len(db)

@@ -1,12 +1,31 @@
 
+cdef extern from "stdint.h":
+	ctypedef signed long int64_t
+	ctypedef unsigned long uint64_t
+	ctypedef signed int int32_t
+	ctypedef unsigned int uint32_t
+	ctypedef signed short int16_t
+	ctypedef unsigned short uint16_t
+	ctypedef signed char int8_t
+	ctypedef unsigned char uint8_t
+
 cdef extern from "dystopia.h":
-	enum openmode:
+	enum open_mode:
 		IDBOREADER,
 		IDBOWRITER,
 		IDBOCREAT,
 		IDBOTRUNC,
 		IDBONOLCK,
 		IDBOLCKNB
+
+	enum search_mode:
+		IDBSSUBSTR,
+		IDBSPREFIX,
+		IDBSSUFFIX,
+		IDBSFULL,
+		IDBSTOKEN,
+		IDBSTOKPRE,
+		IDBSTOKSUF
 
 	ctypedef struct TCIDB:
 		pass
@@ -16,25 +35,25 @@ cdef extern from "dystopia.h":
 	TCIDB *tcidbnew()
 	void tcidbdel(TCIDB *idb)
 	int tcidbecode(TCIDB *idb)
-	bint tcidbtune(TCIDB *idb, int ernum, int etnum, int iusiz, unsigned char opts)
-	bint tcidbsetcache(TCIDB *idb, int icsiz, int lcnum)
-	bint tcidbsetfwmmax(TCIDB *idb, unsigned int fwmmax)
+	bint tcidbtune(TCIDB *idb, int64_t ernum, int64_t etnum, int64_t iusiz, uint8_t opts)
+	bint tcidbsetcache(TCIDB *idb, int64_t icsiz, int32_t lcnum)
+	bint tcidbsetfwmmax(TCIDB *idb, uint32_t fwmmax)
 	bint tcidbopen(TCIDB *idb, char *path, int omode)
 	bint tcidbclose(TCIDB *idb)
-	bint tcidbput(TCIDB *idb, int id, char *text)
-	bint tcidbout(TCIDB *idb, int id)
-	char *tcidbget(TCIDB *idb, int id)
-	unsigned int *tcidbsearch(TCIDB *idb, char *word, int smode, int *np)
-	unsigned int *tcidbsearch2(TCIDB *idb, char *expr, int *np)
+	bint tcidbput(TCIDB *idb, int64_t id, char *text)
+	bint tcidbout(TCIDB *idb, int64_t id)
+	char *tcidbget(TCIDB *idb, int64_t id)
+	uint64_t *tcidbsearch(TCIDB *idb, char *word, int smode, int *np)
+	uint64_t *tcidbsearch2(TCIDB *idb, char *expr, int *np)
 	bint tcidbiterinit(TCIDB *idb)
-	unsigned int tcidbiternext(TCIDB *idb)
+	uint64_t tcidbiternext(TCIDB *idb)
 	bint tcidbsync(TCIDB *idb)
 	bint tcidboptimize(TCIDB *idb)
 	bint tcidbvanish(TCIDB *idb)
 	bint tcidbcopy(TCIDB *idb, char *path)
 	char *tcidbpath(TCIDB *idb)
-	unsigned int tcidbrnum(TCIDB *idb)
-	unsigned int tcidbfsiz(TCIDB *idb)
+	uint64_t tcidbrnum(TCIDB *idb)
+	uint64_t tcidbfsiz(TCIDB *idb)
 
 # Open flags
 
@@ -44,8 +63,30 @@ CREAT = IDBOCREAT
 TRUNC = IDBOTRUNC
 NOLCK = IDBONOLCK
 LCKNB = IDBOLCKNB
-	
+
+# Search flags
+
+SUBSTR = IDBSSUBSTR
+PREFIX = IDBSPREFIX
+SUFFIX = IDBSSUFFIX
+FULL = IDBSFULL
+TOKEN = IDBSTOKEN
+TOKPRE = IDBSTOKPRE
+TOKSUF = IDBSTOKSUF
+
+# Helper function. Given a pointer to an array of result ID values,
+# generate a Python list containing them.
+
+cdef result_list(uint64_t *result, unsigned int result_len):
+	pyresult = []
+
+	for i in range(result_len):
+		pyresult.append(result[i])
+
+	return pyresult
+
 cdef class database:
+
 	cdef TCIDB *db
 
 	cdef __throw_exception(self):
@@ -58,10 +99,10 @@ cdef class database:
 
 	def __del__(self):
 		tcidbdel(self.db)
-	
+
 	def __len__(self):
 		return tcidbrnum(self.db)
-	
+
 	def __iter__(self):
 		if not tcidbiterinit(self.db):
 			self.__throw_exception()
@@ -123,6 +164,29 @@ cdef class database:
 	def vanish(self):
 		if not tcidbvanish(self.db):
 			self.__throw_exception()
+
+	def search(self, word, smode):
+		cdef int result_len
+		cdef uint64_t *result
+
+		result = tcidbsearch(self.db, word, smode, &result_len)
+
+		if result == NULL:
+			self.__throw_exception()
+
+		return result_list(result, result_len)
+
+	def search2(self, expression):
+		cdef int result_len
+		cdef uint64_t *result
+
+		result = tcidbsearch2(self.db, expression, &result_len)
+
+		if result == NULL:
+			self.__throw_exception()
+
+		return result_list(result, result_len)
+
 
 	def tune(self, ernum, etnum, iusiz, opts):
 		if not tcidbtune(self.db, ernum, etnum, iusiz, opts):
