@@ -419,8 +419,6 @@ cdef extern from "tcqdb.h":
 	void tcidsetclear(TCIDSET *idset)
 
 cdef class QDB:
-	cdef TCQDB *db
-
 	TLARGE, = QDBTLARGE,
 	TDEFLATE, = QDBTDEFLATE,
 	TBZIP, = QDBTBZIP,
@@ -437,6 +435,8 @@ cdef class QDB:
 	SPREFIX, = QDBSPREFIX,
 	SSUFFIX, = QDBSSUFFIX,
 	SFULL = QDBSFULL
+
+	cdef TCQDB *db
 
 	cdef __throw_exception(self):
 		errcode = tcqdbecode(self.db)
@@ -541,4 +541,98 @@ cdef class QDB:
 
 	def cnum(self):
 		return tcqdbcnum(self.db)
+
+# ----------------------------------------------------------------------
+#
+#  Simple API:
+#
+# ----------------------------------------------------------------------
+
+cdef extern from "laputa.h":
+	ctypedef struct TCJDB:
+		pass
+	ctypedef struct TCLIST:
+		pass
+
+	char *tcjdberrmsg(int ecode)
+	TCJDB *tcjdbnew()
+	void tcjdbdel(TCJDB *jdb)
+	int tcjdbecode(TCJDB *jdb)
+	bint tcjdbopen(TCJDB *jdb, char *path, int omode)
+	bint tcjdbclose(TCJDB *jdb)
+	bint tcjdbsync(TCJDB *jdb)
+	bint tcjdboptimize(TCJDB *jdb)
+	bint tcjdbvanish(TCJDB *jdb)
+	uint64_t tcjdbrnum(TCJDB *jdb)
+	uint64_t tcjdbfsiz(TCJDB *jdb)
+	char *tcjdbpath(TCJDB *jdb)
+	bint tcjdbcopy(TCJDB *jdb, char *path)
+
+	bint tcjdbtune(TCJDB *jdb, int64_t ernum, int64_t etnum, int64_t iusiz, uint8_t opts)
+	bint tcjdbsetcache(TCJDB *jdb, int64_t icsiz, int32_t lcnum)
+	bint tcjdbsetfwmmax(TCJDB *jdb, uint32_t fwmmax)
+	bint tcjdbput(TCJDB *jdb, int64_t id, TCLIST *words)
+	bint tcjdbput2(TCJDB *jdb, int64_t id, char *text, char *delims)
+	bint tcjdbout(TCJDB *jdb, int64_t id)
+	TCLIST *tcjdbget(TCJDB *jdb, int64_t id)
+	char *tcjdbget2(TCJDB *jdb, int64_t id)
+	uint64_t *tcjdbsearch(TCJDB *jdb, char *word, int smode, int *np)
+	uint64_t *tcjdbsearch2(TCJDB *jdb, char *expr, int *np)
+	bint tcjdbiterinit(TCJDB *jdb)
+	uint64_t tcjdbiternext(TCJDB *jdb)
+	void tcjdbsetdbgfd(TCJDB *jdb, int fd)
+	int tcjdbdbgfd(TCJDB *jdb)
+	bint tcjdbmemsync(TCJDB *jdb, int level)
+	uint64_t tcjdbinode(TCJDB *jdb)
+	uint32_t tcjdbmtime(TCJDB *jdb)
+	uint8_t tcjdbopts(TCJDB *jdb)
+	#void tcjdbsetsynccb(TCJDB *jdb, bint (*cb)(int, int, char *, void *), void *opq)
+	void tcjdbsetexopts(TCJDB *jdb, uint32_t exopts)
+
+cdef class JDB:
+	cdef TCJDB *db
+
+	cdef __throw_exception(self):
+		errcode = tcjdbecode(self.db)
+		errmsg = tcjdberrmsg(errcode)
+		raise Exception(errmsg)
+
+	def __init__(self):
+		self.db = tcjdbnew()
+
+	def __del__(self):
+		tcjdbdel(self.db)
+
+	def __len__(self):
+		return tcjdbrnum(self.db)
+
+	def open(self, path, omode):
+		if not tcjdbopen(self.db, path, omode):
+			self.__throw_exception()
+
+	def close(self):
+		if not tcjdbclose(self.db):
+			self.__throw_exception()
+
+	def path(self):
+		return tcjdbpath(self.db)
+
+	def copy(self, path):
+		if not tcjdbcopy(self.db, path):
+			self.__throw_exception()
+
+	def sync(self):
+		if not tcjdbsync(self.db):
+			self.__throw_exception()
+
+	def optimize(self):
+		if not tcjdboptimize(self.db):
+			self.__throw_exception()
+
+	def vanish(self):
+		if not tcjdbvanish(self.db):
+			self.__throw_exception()
+
+	def fsiz(self):
+		return tcjdbfsiz(self.db)
 
