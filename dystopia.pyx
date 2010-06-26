@@ -9,7 +9,22 @@ cdef extern from "stdint.h":
 	ctypedef signed char int8_t
 	ctypedef unsigned char uint8_t
 
-# Simple API:
+# Helper function. Given a pointer to an array of result ID values,
+# generate a Python list containing them.
+
+cdef result_list(uint64_t *result, unsigned int result_len):
+	pyresult = []
+
+	for i in range(result_len):
+		pyresult.append(result[i])
+
+	return pyresult
+
+# ----------------------------------------------------------------------
+#
+#  Simple API:
+#
+# ----------------------------------------------------------------------
 
 cdef extern from "dystopia.h":
 	enum open_mode:
@@ -94,17 +109,6 @@ TLARGE = IDBTLARGE
 TDEFLATE = IDBTDEFLATE
 TBZIP = IDBTBZIP
 TTCBS = IDBTTCBS
-
-# Helper function. Given a pointer to an array of result ID values,
-# generate a Python list containing them.
-
-cdef result_list(uint64_t *result, unsigned int result_len):
-	pyresult = []
-
-	for i in range(result_len):
-		pyresult.append(result[i])
-
-	return pyresult
 
 cdef class IDB:
 	""" Tokyo Dystopia indexed database object. """
@@ -337,4 +341,201 @@ cdef class IDB:
 
 		if not tcidboptimize(self.db):
 			self.__throw_exception()
+
+cdef extern from "tcqdb.h":
+	ctypedef struct TCMAP:
+		pass
+
+	ctypedef struct TCQDB:
+		pass
+
+	ctypedef struct QDBRSET:
+		uint64_t *ids
+		int num
+
+	ctypedef struct TCIDSET:
+		uint64_t *buckets
+		uint32_t bnum
+		TCMAP *trails
+
+	enum qdb_tune_mode:
+		QDBTLARGE,
+		QDBTDEFLATE,
+		QDBTBZIP,
+		QDBTTCBS
+
+	enum qdb_open_mode:
+		QDBOREADER,
+		QDBOWRITER,
+		QDBOCREAT,
+		QDBOTRUNC,
+		QDBONOLCK,
+		QDBOLCKNB
+
+	enum qdb_search_mode:
+		QDBSSUBSTR,
+		QDBSPREFIX,
+		QDBSSUFFIX,
+		QDBSFULL
+
+	char *tcqdberrmsg(int ecode)
+	TCQDB *tcqdbnew()
+	void tcqdbdel(TCQDB *qdb)
+	int tcqdbecode(TCQDB *qdb)
+	bint tcqdbopen(TCQDB *qdb, char *path, int omode)
+	bint tcqdbclose(TCQDB *qdb)
+	bint tcqdbput(TCQDB *qdb, int64_t id, char *text)
+	bint tcqdbout(TCQDB *qdb, int64_t id, char *text)
+	uint64_t *tcqdbsearch(TCQDB *qdb, char *word, int smode, int *np)
+	bint tcqdbtune(TCQDB *qdb, int64_t etnum, uint8_t opts)
+	bint tcqdbsetcache(TCQDB *qdb, int64_t icsiz, int32_t lcnum)
+	bint tcqdbsetfwmmax(TCQDB *qdb, uint32_t fwmmax)
+	bint tcqdbsync(TCQDB *qdb)
+	bint tcqdboptimize(TCQDB *qdb)
+	bint tcqdbvanish(TCQDB *qdb)
+	bint tcqdbcopy(TCQDB *qdb, char *path)
+	char *tcqdbpath(TCQDB *qdb)
+	uint64_t tcqdbtnum(TCQDB *qdb)
+	uint64_t tcqdbfsiz(TCQDB *qdb)
+	bint tcqdbmemsync(TCQDB *qdb, int level)
+	bint tcqdbcacheclear(TCQDB *qdb)
+	uint64_t tcqdbinode(TCQDB *qdb)
+	uint64_t tcqdbmtime(TCQDB *qdb)
+	uint8_t tcqdbopts(TCQDB *qdb)
+	#void tcqdbsetsynccb(TCQDB *qdb, bint (*cb)(int, int, char *, void *), void *opq)
+	uint32_t tcqdbfwmmax(TCQDB *qdb)
+	uint32_t tcqdbcnum(TCQDB *qdb)
+	uint64_t *tcqdbresunion(QDBRSET *rsets, int rsnum, int *np)
+	uint64_t *tcqdbresisect(QDBRSET *rsets, int rsnum, int *np)
+	uint64_t *tcqdbresdiff(QDBRSET *rsets, int rsnum, int *np)
+	void tctextnormalize(char *text, int opts)
+	TCIDSET *tcidsetnew(uint32_t bnum)
+	void tcidsetdel(TCIDSET *idset)
+	void tcidsetmark(TCIDSET *idset, int64_t id)
+	bint tcidsetcheck(TCIDSET *idset, int64_t id)
+	void tcidsetclear(TCIDSET *idset)
+
+TLARGE, = QDBTLARGE,
+TDEFLATE, = QDBTDEFLATE,
+TBZIP, = QDBTBZIP,
+TTCBS = QDBTTCBS
+
+OREADER, = QDBOREADER,
+OWRITER, = QDBOWRITER,
+OCREAT, = QDBOCREAT,
+OTRUNC, = QDBOTRUNC,
+ONOLCK, = QDBONOLCK,
+OLCKNB = QDBOLCKNB
+
+SSUBSTR, = QDBSSUBSTR,
+SPREFIX, = QDBSPREFIX,
+SSUFFIX, = QDBSSUFFIX,
+SFULL = QDBSFULL
+
+cdef class QDB:
+	cdef TCQDB *db
+
+	cdef __throw_exception(self):
+		errcode = tcqdbecode(self.db)
+		errmsg = tcqdberrmsg(errcode)
+		raise Exception(errmsg)
+
+	def __init__(self):
+		self.db = tcqdbnew()
+
+	def __del__(self):
+		tcqdbdel(self.db)
+
+	def __len__(self):
+		return tcqdbtnum(self.db)
+
+	def open(self, path, omode):
+		if not tcqdbopen(self.db, path, omode):
+			self.__throw_exception()
+
+	def close(self):
+		if not tcqdbclose(self.db):
+			self.__throw_exception()
+
+	def put(self, id, text):
+		if not tcqdbput(self.db, id, text):
+			self.__throw_exception()
+
+	def out(self, id, text):
+		if not tcqdbout(self.db, id, text):
+			self.__throw_exception()
+
+	def search(self, word, smode):
+		cdef int result_len
+		cdef uint64_t *result
+
+		result = tcqdbsearch(self.db, word, smode, &result_len)
+
+		if result == NULL:
+			self.__throw_exception()
+
+		return result_list(result, result_len)
+
+	def tune(self, etnum, opts):
+		if not tcqdbtune(self.db, etnum, opts):
+			self.__throw_exception()
+
+	def setcache(self, icsiz, lcnum):
+		if not tcqdbsetcache(self.db, icsiz, lcnum):
+			self.__throw_exception()
+
+	def setfwmmax(self, fwmmax):
+		if not tcqdbsetfwmmax(self.db, fwmmax):
+			self.__throw_exception()
+
+	def sync(self):
+		if not tcqdbsync(self.db):
+			self.__throw_exception()
+
+	def optimize(self):
+		if not tcqdboptimize(self.db):
+			self.__throw_exception()
+
+	def vanish(self):
+		if not tcqdbvanish(self.db):
+			self.__throw_exception()
+
+	def copy(self, path):
+		if not tcqdbcopy(self.db, path):
+			self.__throw_exception()
+
+	def path(self):
+		cdef char *result
+		result = tcqdbpath(self.db)
+
+		if result == NULL:
+			return None
+		else:
+			return result
+
+	def fsiz(self):
+		return tcqdbfsiz(self.db)
+
+	def memsync(self, level):
+		if not tcqdbmemsync(self.db, level):
+			self.__throw_exception()
+
+	def cacheclear(self):
+		if not tcqdbcacheclear(self.db):
+			self.__throw_exception()
+
+	def inode(self):
+		return tcqdbinode(self.db)
+
+	def mtime(self):
+		return tcqdbmtime(self.db)
+
+	def opts(self):
+		return tcqdbopts(self.db)
+
+	def fwmmax(self):
+		return tcqdbfwmmax(self.db)
+
+	def cnum(self):
+		return tcqdbcnum(self.db)
 
