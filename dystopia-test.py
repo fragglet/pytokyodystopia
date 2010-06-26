@@ -2,7 +2,7 @@
 import dystopia
 
 db = dystopia.IDB()
-db.open("foo.db", dystopia.CREAT | dystopia.WRITER)
+db.open("foo.db", dystopia.IDB.OCREAT | dystopia.IDB.OWRITER)
 db.put(1234, "hello world")
 db.put(1235, "goodbye world")
 
@@ -13,7 +13,7 @@ print "All objects:"
 for id in db:
 	print "%i: %s" % (id, db.get(id))
 
-search_results = db.search("world", dystopia.SUBSTR)
+search_results = db.search("world", dystopia.IDB.SSUBSTR)
 
 print "Searched for 'world', result: %s" % search_results
 
