@@ -22,12 +22,12 @@ cdef result_list(uint64_t *result, unsigned int result_len):
 
 # ----------------------------------------------------------------------
 #
-#  Simple API:
+#  Core API:
 #
 # ----------------------------------------------------------------------
 
 cdef extern from "dystopia.h":
-	enum open_mode:
+	enum idb_open_mode:
 		IDBOREADER,
 		IDBOWRITER,
 		IDBOCREAT,
@@ -35,7 +35,7 @@ cdef extern from "dystopia.h":
 		IDBONOLCK,
 		IDBOLCKNB
 
-	enum search_mode:
+	enum idb_search_mode:
 		IDBSSUBSTR,
 		IDBSPREFIX,
 		IDBSSUFFIX,
@@ -44,7 +44,7 @@ cdef extern from "dystopia.h":
 		IDBSTOKPRE,
 		IDBSTOKSUF
 
-	enum tune_mode:
+	enum idb_tune_mode:
 		IDBTLARGE,
 		IDBTDEFLATE,
 		IDBTBZIP,
@@ -77,12 +77,6 @@ cdef extern from "dystopia.h":
 	char *tcidbpath(TCIDB *idb)
 	uint64_t tcidbrnum(TCIDB *idb)
 	uint64_t tcidbfsiz(TCIDB *idb)
-
-# ----------------------------------------------------------------------
-#
-#  Simple API
-#
-# ----------------------------------------------------------------------
 
 # Open flags
 
@@ -342,6 +336,12 @@ cdef class IDB:
 		if not tcidboptimize(self.db):
 			self.__throw_exception()
 
+# ----------------------------------------------------------------------
+#
+#  Q-Gram API
+#
+# ----------------------------------------------------------------------
+
 cdef extern from "tcqdb.h":
 	ctypedef struct TCMAP:
 		pass
@@ -402,9 +402,12 @@ cdef extern from "tcqdb.h":
 	uint64_t tcqdbinode(TCQDB *qdb)
 	uint64_t tcqdbmtime(TCQDB *qdb)
 	uint8_t tcqdbopts(TCQDB *qdb)
-	#void tcqdbsetsynccb(TCQDB *qdb, bint (*cb)(int, int, char *, void *), void *opq)
 	uint32_t tcqdbfwmmax(TCQDB *qdb)
 	uint32_t tcqdbcnum(TCQDB *qdb)
+
+	# TODO?
+
+	#void tcqdbsetsynccb(TCQDB *qdb, bint (*cb)(int, int, char *, void *), void *opq)
 	uint64_t *tcqdbresunion(QDBRSET *rsets, int rsnum, int *np)
 	uint64_t *tcqdbresisect(QDBRSET *rsets, int rsnum, int *np)
 	uint64_t *tcqdbresdiff(QDBRSET *rsets, int rsnum, int *np)
