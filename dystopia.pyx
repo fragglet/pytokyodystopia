@@ -193,7 +193,7 @@ cdef class IDB:
 
 		return tcidbfsiz(self.db)
 
-	def put(self, id, text):
+	def __setitem__(self, id, text):
 		""" Store a new record in the database.
 
 		    `id' specifies the ID number of the record.  It should
@@ -204,7 +204,7 @@ cdef class IDB:
 		if not tcidbput(self.db, id, text):
 			self.__throw_exception()
 
-	def out(self, id):
+	def __delitem__(self, id):
 		""" Remove a record from the database.
 
 		    `id' specifies the ID number of the record to remove.
@@ -213,7 +213,7 @@ cdef class IDB:
 		if not tcidbout(self.db, id):
 			self.__throw_exception()
 
-	def get(self, id):
+	def __getitem__(self, id):
 		""" Get the string data associated with the specified
 		    database record.
 
@@ -228,7 +228,7 @@ cdef class IDB:
 		else:
 			return text
 
-	def vanish(self):
+	def clear(self):
 		""" Remove all records from the database. """
 
 		if not tcidbvanish(self.db):
@@ -460,6 +460,19 @@ cdef class QDB:
 		if not tcqdbclose(self.db):
 			self.__throw_exception()
 
+	def path(self):
+		cdef char *result
+		result = tcqdbpath(self.db)
+
+		if result == NULL:
+			return None
+		else:
+			return result
+
+	def copy(self, path):
+		if not tcqdbcopy(self.db, path):
+			self.__throw_exception()
+
 	def put(self, id, text):
 		if not tcqdbput(self.db, id, text):
 			self.__throw_exception()
@@ -499,22 +512,9 @@ cdef class QDB:
 		if not tcqdboptimize(self.db):
 			self.__throw_exception()
 
-	def vanish(self):
+	def clear(self):
 		if not tcqdbvanish(self.db):
 			self.__throw_exception()
-
-	def copy(self, path):
-		if not tcqdbcopy(self.db, path):
-			self.__throw_exception()
-
-	def path(self):
-		cdef char *result
-		result = tcqdbpath(self.db)
-
-		if result == NULL:
-			return None
-		else:
-			return result
 
 	def fsiz(self):
 		return tcqdbfsiz(self.db)
@@ -629,7 +629,7 @@ cdef class JDB:
 		if not tcjdboptimize(self.db):
 			self.__throw_exception()
 
-	def vanish(self):
+	def clear(self):
 		if not tcjdbvanish(self.db):
 			self.__throw_exception()
 
