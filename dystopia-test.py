@@ -1,7 +1,7 @@
 
 import dystopia
 
-db = dystopia.database()
+db = dystopia.IDB()
 db.open("foo.db", dystopia.CREAT | dystopia.WRITER)
 db.put(1234, "hello world")
 db.put(1235, "goodbye world")
