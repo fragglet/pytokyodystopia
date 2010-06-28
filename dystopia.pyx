@@ -590,6 +590,26 @@ cdef extern from "laputa.h":
 	ctypedef struct TCJDB:
 		pass
 
+	enum jdb_tune_mode:
+		JDBTLARGE,
+		JDBTDEFLATE,
+		JDBTBZIP,
+		JDBTTCBS
+
+	enum jdb_open_mode:
+		JDBOREADER,
+		JDBOWRITER,
+		JDBOCREAT,
+		JDBOTRUNC,
+		JDBONOLCK,
+		JDBOLCKNB
+
+	enum jdb_search_mode:
+		JDBSSUBSTR,
+		JDBSPREFIX,
+		JDBSSUFFIX,
+		JDBSFULL
+
 	char *tcjdberrmsg(int ecode)
 	TCJDB *tcjdbnew()
 	void tcjdbdel(TCJDB *jdb)
@@ -626,6 +646,23 @@ cdef extern from "laputa.h":
 	#void tcjdbsetsynccb(TCJDB *jdb, bint (*cb)(int, int, char *, void *), void *opq)
 
 cdef class JDB:
+	TLARGE = JDBTLARGE
+	TDEFLATE = JDBTDEFLATE
+	TBZIP = JDBTBZIP
+	TTCBS = JDBTTCBS
+
+	OREADER = JDBOREADER
+	OWRITER = JDBOWRITER
+	OCREAT = JDBOCREAT
+	OTRUNC = JDBOTRUNC
+	ONOLCK = JDBONOLCK
+	OLCKNB = JDBOLCKNB
+
+	SSUBSTR = JDBSSUBSTR
+	SPREFIX = JDBSPREFIX
+	SSUFFIX = JDBSSUFFIX
+	SFULL = JDBSFULL
+
 	cdef TCJDB *db
 
 	cdef __throw_exception(self):
