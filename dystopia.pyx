@@ -567,27 +567,28 @@ cdef extern from "laputa.h":
 	uint64_t tcjdbfsiz(TCJDB *jdb)
 	char *tcjdbpath(TCJDB *jdb)
 	bint tcjdbcopy(TCJDB *jdb, char *path)
-
 	bint tcjdbtune(TCJDB *jdb, int64_t ernum, int64_t etnum, int64_t iusiz, uint8_t opts)
 	bint tcjdbsetcache(TCJDB *jdb, int64_t icsiz, int32_t lcnum)
 	bint tcjdbsetfwmmax(TCJDB *jdb, uint32_t fwmmax)
-	bint tcjdbput(TCJDB *jdb, int64_t id, TCLIST *words)
 	bint tcjdbput2(TCJDB *jdb, int64_t id, char *text, char *delims)
-	bint tcjdbout(TCJDB *jdb, int64_t id)
-	TCLIST *tcjdbget(TCJDB *jdb, int64_t id)
 	char *tcjdbget2(TCJDB *jdb, int64_t id)
-	uint64_t *tcjdbsearch(TCJDB *jdb, char *word, int smode, int *np)
-	uint64_t *tcjdbsearch2(TCJDB *jdb, char *expr, int *np)
-	bint tcjdbiterinit(TCJDB *jdb)
-	uint64_t tcjdbiternext(TCJDB *jdb)
-	void tcjdbsetdbgfd(TCJDB *jdb, int fd)
-	int tcjdbdbgfd(TCJDB *jdb)
 	bint tcjdbmemsync(TCJDB *jdb, int level)
 	uint64_t tcjdbinode(TCJDB *jdb)
 	uint32_t tcjdbmtime(TCJDB *jdb)
 	uint8_t tcjdbopts(TCJDB *jdb)
-	#void tcjdbsetsynccb(TCJDB *jdb, bint (*cb)(int, int, char *, void *), void *opq)
 	void tcjdbsetexopts(TCJDB *jdb, uint32_t exopts)
+
+	bint tcjdbput(TCJDB *jdb, int64_t id, TCLIST *words)
+	bint tcjdbout(TCJDB *jdb, int64_t id)
+	TCLIST *tcjdbget(TCJDB *jdb, int64_t id)
+	uint64_t *tcjdbsearch(TCJDB *jdb, char *word, int smode, int *np)
+	uint64_t *tcjdbsearch2(TCJDB *jdb, char *expr, int *np)
+	bint tcjdbiterinit(TCJDB *jdb)
+	uint64_t tcjdbiternext(TCJDB *jdb)
+
+	void tcjdbsetdbgfd(TCJDB *jdb, int fd)
+	int tcjdbdbgfd(TCJDB *jdb)
+	#void tcjdbsetsynccb(TCJDB *jdb, bint (*cb)(int, int, char *, void *), void *opq)
 
 cdef class JDB:
 	cdef TCJDB *db
@@ -605,6 +606,29 @@ cdef class JDB:
 
 	def __len__(self):
 		return tcjdbrnum(self.db)
+
+	def __iter__(self):
+
+		if not tcjdbiterinit(self.db):
+			self.__throw_exception()
+
+		# The API only allows for one iterator at a time;
+		# the iterator reference is to the DB object.
+		# This is rather un-Python-like.
+
+		return self
+
+	# This method is here because the database object acts as its
+	# own iterator.
+
+	def __next__(self):
+
+		val = tcjdbiternext(self.db)
+
+		if val == 0:
+			raise StopIteration()
+
+		return val
 
 	def open(self, path, omode):
 		if not tcjdbopen(self.db, path, omode):
@@ -635,4 +659,39 @@ cdef class JDB:
 
 	def fsiz(self):
 		return tcjdbfsiz(self.db)
+
+	def tune(self, ernum, etnum, iusiz, opts):
+		if not tcjdbtune(self.db, ernum, etnum, iusiz, opts):
+			self.__throw_exception()
+
+	def setcache(self, icsiz, lcnum):
+		if not tcjdbsetcache(self.db, icsiz, lcnum):
+			self.__throw_exception()
+
+	def setfwmmax(self, fwmmax):
+		if not tcjdbsetfwmmax(self.db, fwmmax):
+			self.__throw_exception()
+
+	def put2(self, id, text, delims):
+		if not tcjdbput2(self.db, id, text, delims):
+			self.__throw_exception()
+
+	def get2(self, id):
+		return tcjdbget2(self.db, id)
+
+	def memsync(self, level):
+		if not tcjdbmemsync(self.db, level):
+			self.__throw_exception()
+
+	def inode(self):
+		return tcjdbinode(self.db)
+
+	def mtime(self):
+		return tcjdbmtime(self.db)
+
+	def opts(self):
+		return tcjdbopts(self.db)
+
+	def setexopts(self, exopts):
+		tcjdbsetexopts(self.db, exopts)
 
