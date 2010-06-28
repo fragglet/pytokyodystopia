@@ -1,0 +1,18 @@
+
+This is a Python wrapper for the Tokyo Dystopia text search library.
+For more information see the Tokyo Dystopia website:
+
+  http://1978th.net/tokyodystopia/
+
+This wrapper code is licensed under the permissive ISC license.
+Anyone can reuse code from this wrapper as they wish.  However, Tokyo
+Dystopia itself is licensed under the GNU LGPL.  You must therefore
+ensure that you continue to follow the terms of the GNU LGPL when
+using Tokyo Dystopia via this wrapper.
+
+To compile this, you need Cython.  For more information see here:
+
+  http://www.cython.org/
+
+Please send comments/feedback to: fraggle@gmail.com
+
