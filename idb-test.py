@@ -2,7 +2,7 @@
 from dystopia import IDB
 
 db = IDB()
-db.open("foo.db", IDB.OCREAT | IDB.OWRITER)
+db.open("idb-test.db", IDB.OCREAT | IDB.OWRITER)
 db[1234] = "hello world"
 db[1235] = "goodbye world"
 

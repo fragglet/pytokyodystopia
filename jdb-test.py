@@ -2,7 +2,7 @@
 from dystopia import JDB
 
 db = JDB()
-db.open("jdb.db", JDB.OCREAT | JDB.OWRITER)
+db.open("jdb-test.db", JDB.OCREAT | JDB.OWRITER)
 db[1234] = [ "hello", "world" ]
 db[1235] = [ "goodbye", "world" ]
 
