@@ -9,6 +9,44 @@ cdef extern from "stdint.h":
 	ctypedef signed char int8_t
 	ctypedef unsigned char uint8_t
 
+# ----------------------------------------------------------------------
+#
+#  tcutil.h (utility functions)
+#
+# ----------------------------------------------------------------------
+
+cdef extern from "tcutil.h":
+	ctypedef struct TCLIST:
+		pass
+
+	TCLIST *tclistnew2(int anum)
+	void tclistdel(TCLIST *list)
+	void tclistpush2(TCLIST *list, char *str)
+	int tclistnum(TCLIST *list)
+	char *tclistval2(TCLIST *list, int index)
+
+# Convert a list of Python strings to a TCLIST.
+
+cdef TCLIST *list_to_tclist(list):
+	cdef TCLIST *result
+
+	result = tclistnew2(len(list))
+
+	for x in list:
+		tclistpush2(result, x)
+	
+	return result
+
+# TCLIST to a list of Python strings ...
+
+cdef tclist_to_list(TCLIST *tclist):
+	result = []
+
+	for i in range(tclistnum(tclist)):
+		result.append(tclistval2(tclist, i))
+
+	return result
+
 # Helper function. Given a pointer to an array of result ID values,
 # generate a Python list containing them.
 
@@ -551,8 +589,6 @@ cdef class QDB:
 cdef extern from "laputa.h":
 	ctypedef struct TCJDB:
 		pass
-	ctypedef struct TCLIST:
-		pass
 
 	char *tcjdberrmsg(int ecode)
 	TCJDB *tcjdbnew()
@@ -577,14 +613,13 @@ cdef extern from "laputa.h":
 	uint32_t tcjdbmtime(TCJDB *jdb)
 	uint8_t tcjdbopts(TCJDB *jdb)
 	void tcjdbsetexopts(TCJDB *jdb, uint32_t exopts)
-
-	bint tcjdbput(TCJDB *jdb, int64_t id, TCLIST *words)
-	bint tcjdbout(TCJDB *jdb, int64_t id)
-	TCLIST *tcjdbget(TCJDB *jdb, int64_t id)
 	uint64_t *tcjdbsearch(TCJDB *jdb, char *word, int smode, int *np)
 	uint64_t *tcjdbsearch2(TCJDB *jdb, char *expr, int *np)
 	bint tcjdbiterinit(TCJDB *jdb)
 	uint64_t tcjdbiternext(TCJDB *jdb)
+	bint tcjdbout(TCJDB *jdb, int64_t id)
+	bint tcjdbput(TCJDB *jdb, int64_t id, TCLIST *words)
+	TCLIST *tcjdbget(TCJDB *jdb, int64_t id)
 
 	void tcjdbsetdbgfd(TCJDB *jdb, int fd)
 	int tcjdbdbgfd(TCJDB *jdb)
@@ -600,6 +635,32 @@ cdef class JDB:
 
 	def __init__(self):
 		self.db = tcjdbnew()
+
+	def __delitem__(self, id):
+		if not tcjdbout(self.db, id):
+			self.__throw_exception()
+
+	def __getitem__(self, id):
+		cdef TCLIST *words
+		words = tcjdbget(self.db, id)
+
+		if words == NULL:
+			return None
+		else:
+			result = tclist_to_list(words)
+			tclistdel(words)
+			return result
+
+	def __setitem__(self, id, list):
+		cdef TCLIST *words
+		words = list_to_tclist(list)
+
+		success = tcjdbput(self.db, id, words)
+
+		tclistdel(words)
+
+		if not success:
+			self.__throw_exception()
 
 	def __del__(self):
 		tcjdbdel(self.db)
@@ -678,6 +739,30 @@ cdef class JDB:
 
 	def get2(self, id):
 		return tcjdbget2(self.db, id)
+
+	def search(self, word, smode):
+
+		cdef int result_len
+		cdef uint64_t *result
+
+		result = tcjdbsearch(self.db, word, smode, &result_len)
+
+		if result == NULL:
+			self.__throw_exception()
+
+		return result_list(result, result_len)
+
+	def search2(self, expression):
+
+		cdef int result_len
+		cdef uint64_t *result
+
+		result = tcjdbsearch2(self.db, expression, &result_len)
+
+		if result == NULL:
+			self.__throw_exception()
+
+		return result_list(result, result_len)
 
 	def memsync(self, level):
 		if not tcjdbmemsync(self.db, level):
